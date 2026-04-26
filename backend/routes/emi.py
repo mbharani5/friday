@@ -1,4 +1,5 @@
 import calendar as cal_module
+from datetime import date as date_type
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -55,6 +56,12 @@ def _enrich(emi: EMI) -> dict:
     }
 
 
+def _month_offset(emi: EMI, year: int, month: int) -> int:
+    """0-based offset of (year, month) from the EMI's start month."""
+    start = date_type.fromisoformat(emi.start_date)
+    return (year - start.year) * 12 + (month - start.month)
+
+
 @router.get("/", response_model=List[EMIResponse])
 async def get_emis(db: Session = Depends(get_db)):
     emis = db.query(EMI).filter(EMI.is_active == True).all()
@@ -99,7 +106,16 @@ async def get_emi_calendar(year: int, month: int, db: Session = Depends(get_db))
     emis = db.query(EMI).filter(EMI.is_active == True).all()
     calendar_data: dict = {}
     days_in_month = cal_module.monthrange(year, month)[1]
+
     for emi in emis:
+        offset = _month_offset(emi, year, month)
+
+        # Only mark months within the unpaid window:
+        # offset must be >= paid_months (not yet paid)
+        # offset must be < total_months (loan not yet ended)
+        if not (emi.paid_months <= offset < emi.total_months):
+            continue
+
         day = min(emi.due_day, days_in_month)
         key = f"{year}-{month:02d}-{day:02d}"
         calendar_data.setdefault(key, []).append(
@@ -108,6 +124,7 @@ async def get_emi_calendar(year: int, month: int, db: Session = Depends(get_db))
                 "name": emi.name,
                 "amount": emi.amount,
                 "remaining_months": max(0, emi.total_months - emi.paid_months),
+                "installment_number": offset + 1,
             }
         )
     return calendar_data
