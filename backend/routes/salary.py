@@ -10,7 +10,7 @@ router = APIRouter()
 
 class SalaryCreate(BaseModel):
     amount: float
-    month: str  # YYYY-MM
+    date: str  # YYYY-MM-DD
     currency: str = "USD"
     notes: Optional[str] = None
 
@@ -23,7 +23,7 @@ class SalaryUpdate(BaseModel):
 class SalaryResponse(BaseModel):
     id: int
     amount: float
-    month: str
+    date: str
     currency: str
     notes: Optional[str]
 
@@ -31,17 +31,30 @@ class SalaryResponse(BaseModel):
         from_attributes = True
 
 
+# /latest and /calendar/{year}/{month} must be declared before /{salary_id}
 @router.get("/latest")
 async def get_latest_salary(db: Session = Depends(get_db)):
-    salary = db.query(Salary).order_by(Salary.month.desc()).first()
+    salary = db.query(Salary).order_by(Salary.date.desc()).first()
     if not salary:
-        return {"amount": 0, "currency": "USD", "month": None}
+        return {"amount": 0, "currency": "USD", "date": None}
     return salary
+
+
+@router.get("/calendar/{year}/{month}")
+async def get_salary_calendar(year: int, month: int, db: Session = Depends(get_db)):
+    month_str = f"{year}-{month:02d}"
+    rows = db.query(Salary).filter(Salary.date.startswith(month_str)).order_by(Salary.date).all()
+    calendar_data: dict = {}
+    for s in rows:
+        calendar_data.setdefault(s.date, []).append(
+            {"id": s.id, "amount": s.amount, "currency": s.currency, "notes": s.notes}
+        )
+    return calendar_data
 
 
 @router.get("/", response_model=List[SalaryResponse])
 async def get_salaries(db: Session = Depends(get_db)):
-    return db.query(Salary).order_by(Salary.month.desc()).all()
+    return db.query(Salary).order_by(Salary.date.desc()).all()
 
 
 @router.post("/", response_model=SalaryResponse)

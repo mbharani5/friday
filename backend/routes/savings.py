@@ -9,8 +9,9 @@ router = APIRouter()
 
 
 def get_month_data(db: Session, month: str) -> dict:
-    salary_row = db.query(Salary).filter(Salary.month == month).first()
-    salary_amount = salary_row.amount if salary_row else 0.0
+    # Sum all payslips whose date falls in this month (supports bi-weekly entries)
+    salary_rows = db.query(Salary).filter(Salary.date.startswith(month)).all()
+    salary_amount = sum(s.amount for s in salary_rows)
 
     expenses = db.query(Expense).filter(Expense.date.startswith(month)).all()
     total_expenses = sum(e.amount for e in expenses)

@@ -10,7 +10,7 @@ class Expense(Base):
     title = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
     category = Column(String, nullable=False)
-    date = Column(String, nullable=False)  # ISO date string YYYY-MM-DD
+    date = Column(String, nullable=False)  # YYYY-MM-DD
     notes = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -21,7 +21,7 @@ class EMI(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
-    due_day = Column(Integer, nullable=False)  # day of month 1-31
+    due_day = Column(Integer, nullable=False)
     total_months = Column(Integer, nullable=False)
     paid_months = Column(Integer, default=0)
     start_date = Column(String, nullable=False)
@@ -35,7 +35,10 @@ class Salary(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     amount = Column(Float, nullable=False)
-    month = Column(String, nullable=False)  # YYYY-MM
+    # DB column kept as "month" for backward compat with existing rows;
+    # new entries store YYYY-MM-DD; old YYYY-MM entries still match
+    # startswith("YYYY-MM") queries so savings calc stays correct.
+    date = Column("month", String, nullable=False)
     currency = Column(String, default="USD")
     notes = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -22,6 +22,7 @@ export const emiAPI = {
 export const salaryAPI = {
   getAll: () => axios.get(`${BASE}/salary/`),
   getLatest: () => axios.get(`${BASE}/salary/latest`),
+  getCalendar: (year, month) => axios.get(`${BASE}/salary/calendar/${year}/${month}`),
   create: (data) => axios.post(`${BASE}/salary/`, data),
   update: (id, data) => axios.put(`${BASE}/salary/${id}`, data),
   delete: (id) => axios.delete(`${BASE}/salary/${id}`),
